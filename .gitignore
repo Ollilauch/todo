@@ -1,0 +1,4 @@
+*.bin
+*leif.c
+.ccls-cache
+todo
