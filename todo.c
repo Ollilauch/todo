@@ -277,7 +277,7 @@ int main(int argc, char* argv[])
     SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );
     SDL_StopTextInput();
 
-    SDL_Window *window = SDL_CreateWindow("ToDo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_ALLOW_HIGHDPI);
+    SDL_Window *window = SDL_CreateWindow("ToDo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL);
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
 
     SDL_Surface *window_surface = SDL_GetWindowSurface(window);

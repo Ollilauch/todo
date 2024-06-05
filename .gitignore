@@ -2,3 +2,5 @@
 *leif.c
 .ccls-cache
 todo
+*.exe
+*.dll

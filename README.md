@@ -9,7 +9,7 @@
 ```
     git clone https://github.com/ollilauch/todo
     cd todo
-    make SDL
+    make linux
     ./todo
 ```
 
