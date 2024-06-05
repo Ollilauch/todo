@@ -290,7 +290,13 @@ int main(int argc, char* argv[])
     TTF_Init();
     // /usr/share/fonts/corefonts/arial.ttf
     // /usr/share/fonts/nerd-font/HackNerdFontMono-Bold.ttf
+#ifdef _WIN32
+    TTF_Font *font = TTF_OpenFont("C:\\Windows\\Fonts\\arial.ttf", FONT_SIZE);
+#endif
+
+#ifdef linux
     TTF_Font *font = TTF_OpenFont("/usr/share/fonts/corefonts/arial.ttf", FONT_SIZE);
+#endif
     if (font == NULL) {
         fprintf(stderr, "error: font not found\n");
         exit(EXIT_FAILURE);
