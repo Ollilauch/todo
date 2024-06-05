@@ -277,14 +277,20 @@ int main(int argc, char* argv[])
     SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );
     SDL_StopTextInput();
 
-    SDL_Window *window = SDL_CreateWindow("ToDo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL);
+    SDL_Window *window = SDL_CreateWindow("ToDo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    printf("Creating Window\n");
+    if(window == NULL) {
+        printf("Error: %s\n", SDL_GetError());
+        return -1;
+    }
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
 
     SDL_Surface *window_surface = SDL_GetWindowSurface(window);
 
     TTF_Init();
     // /usr/share/fonts/corefonts/arial.ttf
-    TTF_Font *font = TTF_OpenFont("/usr/share/fonts/nerd-font/HackNerdFontMono-Bold.ttf", FONT_SIZE);
+    // /usr/share/fonts/nerd-font/HackNerdFontMono-Bold.ttf
+    TTF_Font *font = TTF_OpenFont("/usr/share/fonts/corefonts/arial.ttf", FONT_SIZE);
     if (font == NULL) {
         fprintf(stderr, "error: font not found\n");
         exit(EXIT_FAILURE);
