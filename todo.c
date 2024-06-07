@@ -83,6 +83,11 @@ Task_entry *deserialize_todo_entry(FILE *file)
     }
 
     entry->desc = (char*)malloc(desc_len);
+    if(entry->desc == NULL) {
+        free(entry);
+        return NULL;
+    }
+
     if(fread(entry->desc, sizeof(char), desc_len, file) != desc_len) {
         free(entry->desc);
         free(entry);
@@ -90,19 +95,29 @@ Task_entry *deserialize_todo_entry(FILE *file)
     }
 
     size_t due_date_len;
-    fread(&due_date_len, sizeof(size_t), 1, file);
+    if(fread(&due_date_len, sizeof(size_t), 1, file) != 1) {
+        free(entry->desc);
+        free(entry);
+        return NULL;
+    }
 
     entry->due_date = (char*)malloc(due_date_len);
-    if(fread(entry->due_date, sizeof(char), due_date_len, file) != due_date_len) {
+    if (entry->due_date == NULL) {
         free(entry->desc);
+        free(entry);
+        return NULL;
+    }
+
+    if(fread(entry->due_date, sizeof(char), due_date_len, file) != due_date_len) {
         free(entry->due_date);
+        free(entry->desc);
         free(entry);
         return NULL;
     }
 
     if(fread(&entry->priority, sizeof(Task_Priority), 1, file) != 1) {
-        free(entry->desc);
         free(entry->due_date);
+        free(entry->desc);
         free(entry);
         return NULL;
     }
@@ -248,6 +263,21 @@ void entries_push(Task_entry **entries, uint32_t *numentries, char *desc, Task_P
     serialize_todo_list(DATA_PATH, entries, *numentries);
 }
 
+void free_entry(Task_entry *entry)
+{
+    free(entry->desc);
+    free(entry->due_date);
+    free(entry);
+}
+
+void free_entries(Task_entry **entries, uint32_t numentries)
+{
+    for(uint32_t i = 0; i < numentries; i++) {
+        free_entry(entries[i]);
+    }
+    // free(entries);
+}
+
 int main(int argc, char* argv[])
 {
     static gui_tab current_tab;
@@ -261,7 +291,7 @@ int main(int argc, char* argv[])
     deserialize_todo_list(DATA_PATH, entries, &numentries);
 
     SDL_Rect title_rec, new_task_button_text_rect, entry_text_input_button_rect, entry_text_input_button_text_rect, new_task_back_button_rect, new_task_add_text_rect, new_task_add_button_rect;
-    SDL_Texture *title_texture, *new_task_button_texture, *new_task_button_text_texture, *entry_text_input_button_text_texture, *trash_icon_texture, *new_task_back_button_texture, *new_task_add_text_texture;
+    SDL_Texture *title_texture, *new_task_button_text_texture, *entry_text_input_button_text_texture, *trash_icon_texture, *new_task_back_button_texture, *new_task_add_text_texture;
 
     SDL_Rect button_rect = {.x = WINDOW_WIDTH - (WINDOW_WIDTH /4), .y = 10, .h = 40, .w = 200};
     Button new_task_button = {.rect = button_rect, .colour = gui_purple};
@@ -455,10 +485,21 @@ int main(int argc, char* argv[])
         SDL_RenderPresent(renderer);
     }
 
+    serialize_todo_list(DATA_PATH, entries, numentries);
 
-    SDL_DestroyTexture(title_texture);
     TTF_Quit();
 
+    free_entries(entries, numentries);
+
+    SDL_DestroyTexture(title_texture);
+    SDL_DestroyTexture(new_task_button_text_texture);
+    SDL_DestroyTexture(entry_text_input_button_text_texture);
+    SDL_DestroyTexture(trash_icon_texture);
+    SDL_DestroyTexture(new_task_back_button_texture);
+    SDL_DestroyTexture(new_task_add_text_texture);
+
+    SDL_FreeSurface(window_surface);
+    SDL_DestroyWindowSurface(window);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
