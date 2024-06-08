@@ -65,6 +65,8 @@ static void serialize_todo_list(const char *filename, Task_entry *entries[], uin
     for(uint32_t i = 0; i < numentries; i++) {
         serialize_todo_entry(file, entries[i]);
     }
+
+    fclose(file);
 }
 
 Task_entry *deserialize_todo_entry(FILE *file)
@@ -196,22 +198,15 @@ void delete_entry(Task_entry **entries, uint32_t *numentries, uint32_t delete_in
     (*numentries)--;
 }
 
-static void draw_entries(SDL_Renderer *renderer, TTF_Font *font, Task_entry *entries[], uint32_t numentries, SDL_Texture *trash_icon_texture, Button *trash_buttons)
+void draw_entries(SDL_Renderer *renderer, TTF_Font *font, Task_entry *entries[], uint32_t numentries, SDL_Texture *trash_icon_texture, Button *trash_buttons)
 {
     uint32_t y = 100;
     SDL_Texture *entry_texture;
-    SDL_Rect entry_rect;
-    SDL_Rect trash_icon_rect;
+    SDL_Rect entry_rect, trash_icon_rect;
 
     for(uint32_t i = 0; i < numentries; i++) {
 
-        // draw trash icon
-        trash_icon_rect = (SDL_Rect) {
-            .x = 50, .y = y, .w = 40, .h = 40
-        };
-        trash_buttons[i] = (Button) {
-            .rect = trash_icon_rect, .colour = {25, 25, 25, 255}, .pressed = trash_buttons[i].pressed
-        };
+        trash_buttons[i].rect.y = y;
 
         TTF_SetFontSize(font, FONT_SIZE);
 
@@ -272,10 +267,11 @@ void free_entry(Task_entry *entry)
 
 void free_entries(Task_entry **entries, uint32_t numentries)
 {
+    if(numentries == 0) return;
+
     for(uint32_t i = 0; i < numentries; i++) {
         free_entry(entries[i]);
     }
-    // free(entries);
 }
 
 int main(int argc, char* argv[])
@@ -307,13 +303,26 @@ int main(int argc, char* argv[])
     SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );
     SDL_StopTextInput();
 
-    SDL_Window *window = SDL_CreateWindow("ToDo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    SDL_Window *window = SDL_CreateWindow("ToDo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
     printf("Creating Window\n");
     if(window == NULL) {
         printf("Error: %s\n", SDL_GetError());
         return -1;
     }
+
+#ifdef _WIN32
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "direct3d11");
+#endif
+
+#ifdef linux
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
+#endif
+
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
+    if(renderer == NULL) {
+        printf("Error: %s\n", SDL_GetError());
+        return -1;
+    }
 
     SDL_Surface *window_surface = SDL_GetWindowSurface(window);
 
@@ -321,11 +330,11 @@ int main(int argc, char* argv[])
     // /usr/share/fonts/corefonts/arial.ttf
     // /usr/share/fonts/nerd-font/HackNerdFontMono-Bold.ttf
 #ifdef _WIN32
-    TTF_Font *font = TTF_OpenFont("C:\\Windows\\Fonts\\arial.ttf", FONT_SIZE);
+    TTF_Font *font = TTF_OpenFont(".\\fonts\\arial.ttf", FONT_SIZE);
 #endif
 
 #ifdef linux
-    TTF_Font *font = TTF_OpenFont("/usr/share/fonts/corefonts/arial.ttf", FONT_SIZE);
+    TTF_Font *font = TTF_OpenFont("./fonts/arial.ttf", FONT_SIZE);
 #endif
     if (font == NULL) {
         fprintf(stderr, "error: font not found\n");
@@ -344,7 +353,15 @@ int main(int argc, char* argv[])
     new_task_button_text_rect.h /= 2;
 
     trash_icon_texture = IMG_LoadTexture(renderer, "./icons/trash-bin.png");
+    SDL_Rect trash_icon_rect = (SDL_Rect) {
+        .x = 50, .y = 0, .w = 40, .h = 40
+    };
     Button trash_buttons[1024];
+    for(int i = 0; i < 1024; i++) {
+        trash_buttons[i] =  (Button) {
+            .rect = trash_icon_rect, .colour = {25, 25, 25, 255}
+        };
+    }
 
     new_task_back_button_texture = IMG_LoadTexture(renderer, "./icons/left.png");
     new_task_back_button_rect = (SDL_Rect) {
@@ -372,7 +389,6 @@ int main(int argc, char* argv[])
         while(SDL_PollEvent(&sdl_event) > 0) {
             switch(sdl_event.type) {
             case SDL_QUIT:
-                serialize_todo_list(DATA_PATH, entries, numentries);
                 quit = 1;
                 break;
 
@@ -380,7 +396,7 @@ int main(int argc, char* argv[])
                 button_process_event(&new_task_button, &sdl_event);
                 button_process_event(&entry_text_input_button, &sdl_event);
                 for(uint32_t i = 0; i < numentries; i++) {
-                    button_process_event(&(trash_buttons[i]), &sdl_event);
+                    button_process_event(&trash_buttons[i], &sdl_event);
                 }
                 button_process_event(&new_task_back_button, &sdl_event);
                 button_process_event(&new_task_add_button, &sdl_event);
@@ -439,7 +455,7 @@ int main(int argc, char* argv[])
 
             // check if remove button for Task was pressed
             for(int i = 0; i < numentries; i++) {
-                if(button(renderer, trash_buttons + i, trash_icon_texture, &(trash_buttons[i].rect))) {
+                if(button(renderer, &trash_buttons[i], trash_icon_texture, &(trash_buttons[i].rect))) {
                     delete_entry(entries, &numentries, i);
                     serialize_todo_list(DATA_PATH, entries, numentries);
                 }
@@ -484,8 +500,6 @@ int main(int argc, char* argv[])
         // This will show the new, red contents of the window.
         SDL_RenderPresent(renderer);
     }
-
-    serialize_todo_list(DATA_PATH, entries, numentries);
 
     TTF_Quit();
 
